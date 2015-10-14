@@ -65,7 +65,7 @@ package
 				if (temp && temp[0])
 				{
 					var idStr:String = String(temp[0]).replace("id=",'').replace("\"",'').replace("\"",'');
-					resultStr +=  "public #1: egret.gui.#2;".replace("#1",idStr).replace("#2",typeStr) + "\n";
+					resultStr +=  "private #1: egret.gui.#2;".replace("#1",idStr).replace("#2",typeStr) + "\n";
 				}
 			}
 			

@@ -154,7 +154,7 @@
 			private function setText(str:String,file:File):void
 			{
 				codeTextArea.text = str;
-				changeCode(str);
+				resultTextArea.text = FileManager.changeCode(str);
 				
 				//file:///E:/egret/egrettt/AddressBook/src/skins/scene/MainViewSkin.exml
 				if(!file) return;
@@ -167,34 +167,6 @@
 				tempStr = tempStr.replace(reg,".");
 				resultTextArea.appendText("\n\n\n对应包路径 =============     \n  ");
 				resultTextArea.appendText(tempStr);
-			}
-		
-			private function changeCode(codeStr:String):void
-			{
-				
-				var codeStr:String = codeStr;
-				var array:Array = codeStr.split("\n");
-				var reg:RegExp = new RegExp(" id=\"(.*?)\"","ig");
-				var resultStr:String = "";//结果
-				for each (var str:String in array)
-				{
-					//搜索空格符
-					var space:String = str.substr(str.indexOf(":") + 1);
-					
-					//从：冒号开始搜索
-					var startIndex:int = str.indexOf(":") + 1;
-					var endIndex:int = startIndex + space.indexOf(" ");//以第一个空格符结束为标记
-					var typeStr:String = str.substring(startIndex,endIndex);//egret的类型
-					
-					var temp:Array = str.match(reg);
-					if (temp && temp[0])
-					{
-						var idStr:String = String(temp[0]).replace("id=",'').replace("\"",'').replace("\"",'');
-						resultStr +=  "private #1:egret.gui.#2;".replace("#1",idStr).replace("#2",typeStr) + "\n";
-					}
-				}
-				
-				resultTextArea.text = resultStr;
 			}
 			
 			protected function windowedapplication1_addedToStageHandler(event:Event):void
