@@ -1,0 +1,213 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx" width="634" height="298" creationComplete="group1_creationCompleteHandler(event)">
+	<fx:Declarations>
+		<!-- 将非可视元素（例如服务、值对象）放在此处 -->
+	</fx:Declarations>
+	<s:TitleWindow  id="panel" x="0" y="0" title="打包" width="634" height="300"  close="panel_closeHandler(event)" mouseDown="move_panel()" mouseUp="stop_panel()">
+	<s:Button id="packBtn" x="537" y="213" width="73" height="39" label="打包" click="packBtn_clickHandler(event)"/>
+	<s:TextInput id="projectPathTxt" x="86" y="74" width="444"/>
+	<s:TextInput id="folderName" x="87" y="29" width="444"/>
+	<s:TextInput id="androidTxt" x="85" y="120" width="444"/>
+	<s:TextInput id="savePathTxt" x="85" y="165" width="444"/>
+	<s:Button id="scanPbjBtn" x="539" y="74" label="浏览" click="scanPbjBtn_clickHandler(event)"/>
+	<s:Button x="540" y="120" label="浏览"/>
+	<s:Button id="scanAndroiBtn" x="540" y="120" label="浏览" click="scanAndroiBtn_clickHandler(event)"/>
+	<s:Button id="scanSavePathBtn" x="540" y="166" label="浏览" click="scanSavePathBtn_clearHandler(event)"/>
+	<s:Label x="28" y="76" text="项目目录"/>
+	<s:Label x="9" y="35" text="导出文件夹名"/>
+	<s:Label x="30" y="124" text="Android"/>
+	<s:Label x="26" y="172" text="保存目录"/>
+	
+	</s:TitleWindow>
+ 
+	<fx:Script>
+		 
+		<![CDATA[
+			import flash.utils.setTimeout;
+			
+			import mx.controls.Alert;
+			import mx.events.CloseEvent;
+			import mx.events.FlexEvent;
+			import mx.managers.PopUpManager;			
+			private var np:NativeProcess;
+			private var info:NativeProcessStartupInfo;
+			protected function group1_creationCompleteHandler(event:FlexEvent):void
+			{
+			
+				
+				folderName.text = FileManager.getPackPath("FolderName");
+				 androidTxt.text = FileManager.getPackPath("AndroidPath");
+				 projectPathTxt.text = FileManager.getPackPath("PbjPath");
+				 savePathTxt.text =FileManager.getPackPath("SavePath");
+				
+				initProgress();
+			}
+			
+			/* 
+			*进程通信 
+			*/
+			private function initProgress():void
+			{			
+				if(NativeProcess.isSupported)
+				{					
+					np = new NativeProcess();
+					np.addEventListener(NativeProcessExitEvent.EXIT, done);
+					np.addEventListener(ProgressEvent.STANDARD_OUTPUT_DATA, onOutput);
+					np.addEventListener(ProgressEvent.STANDARD_INPUT_PROGRESS, inputProgressListener);
+					np.addEventListener(Event.STANDARD_ERROR_CLOSE, error);
+					info = new NativeProcessStartupInfo();
+				 	var file:File = File.applicationDirectory.resolvePath("CMDD.exe"); 
+					//info.executable = file; 
+					 info.executable = file;//new File("C:/WINDOWS/System32/cmd.exe");
+					
+			
+					
+					
+				}
+				else
+				{
+					 Alert.show("不支持进程通信");					
+				}			 
+			}
+			
+ 
+			
+			public function inputProgressListener(event:ProgressEvent):void
+			{
+				
+			}
+			
+			private function done(event:NativeProcessExitEvent):void
+			{
+				Alert.show("打包完成");	
+			}
+			
+			private function error(event:Event):void
+			{
+				trace(event);
+			}
+			
+			private function onOutput(event:ProgressEvent):void
+			{
+				trace(event);
+			}
+			
+
+		public function move_panel():void
+		{
+			if(panel.mouseY <30)
+			{
+				panel.startDrag();
+			}
+			
+		}
+		
+		public function stop_panel():void
+		{
+			panel.stopDrag();
+		}
+		
+		protected function packBtn_clickHandler(event:MouseEvent):void
+		{			 			
+			if(folderName.text !="" && projectPathTxt.text!="" && androidTxt.text !="" && savePathTxt.text != "")
+				
+			{
+				var folderStr:String = folderName.text;
+				var projectStr:String = projectPathTxt.text;
+				var deviceStr:String = androidTxt.text;
+				var cmd:String = "egret create_app #1 -f #2 -t #3";
+				cmd = cmd.replace("#1",folderStr).replace("#2",projectStr).replace("#3",deviceStr);
+				
+				cmd = "cd /d "+savePathTxt.text+"\n "+cmd; 
+				
+				var fileStream:FileStream = new FileStream();
+				var file:File = new File(savePathTxt.text+"\\pack.bat");
+				fileStream.open(file,FileMode.WRITE);
+				fileStream.writeMultiByte(cmd,"utf-8");
+				fileStream.close();
+				
+				 //"egret create_app HelloApp -f E:\testAndroidPack\AddressBook -t E:\testAndroidPack\android\adt-bundle-windows-x86_64-20140624\egret-android-support-2.5.0"
+				//cmd = "egret";
+				if(np)
+				{
+				    var processArg:Vector.<String> = new Vector.<String>();
+					//processArg[0] = "/c E:/testAndroidPack/temp2.bat";
+					//processArg[1] = savePathTxt.text+"\\temp2.bat";
+					//processArg[1]  = "E:/testAndroidPack/CMDD.exe"
+					// processArg.push("/c");
+				    processArg.push(savePathTxt.text+"\\pack.bat");
+				   // processArg.push("E:/testAndroidPack/CMDD.exe");
+					//processArg.push("E:/testAndroidPack/temp2.bat");
+					//processArg[1] = "test.txt";
+					//processArg.push("egret");
+				   info.arguments = processArg;
+					if(!np.running)
+					{
+						np.start(info);
+					}
+					//cmd = "Shutdown -s -t 1000000";
+				  // np.standardInput.writeUTFBytes(processArg+"\n"); 
+					
+					//var f:File =  new File("E:/testAndroidPack/test.vbs");
+					//f.openWithDefaultApplication();
+					  FileManager.setPackPath("FolderName",folderStr);
+				}
+				else
+				{
+					Alert.show("不支持进程通信");			
+				}
+			
+			}
+			
+		}
+			
+			protected function panel_closeHandler(event:CloseEvent):void
+			{
+				PopUpManager.removePopUp(this);			
+			}
+			
+			protected function scanAndroiBtn_clickHandler(event:MouseEvent):void
+			{
+				 var file:File = new File();
+				 file.addEventListener(Event.SELECT,onComplete);
+				 file.browseForDirectory("选择路径")
+				 function onComplete(event:Event):void
+				 {
+					 var curFile:File = event.currentTarget as File;
+					 androidTxt.text = curFile.nativePath;
+					 FileManager.setPackPath("AndroidPath",curFile.nativePath);
+				 }
+			}
+			
+			protected function scanPbjBtn_clickHandler(event:MouseEvent):void
+			{
+				var file:File = new File();
+				file.addEventListener(Event.SELECT,onComplete);
+				file.browseForDirectory("选择路径")
+				function onComplete(event:Event):void
+				{
+					var curFile:File = event.currentTarget as File;
+					projectPathTxt.text = curFile.nativePath;
+					FileManager.setPackPath("PbjPath",curFile.nativePath);
+				}
+			}
+			
+			protected function scanSavePathBtn_clearHandler(event:Event):void
+			{
+				var file:File = new File();
+				file.addEventListener(Event.SELECT,onComplete);
+				file.browseForDirectory("选择路径")
+				function onComplete(event:Event):void
+				{
+					var curFile:File = event.currentTarget as File;
+					savePathTxt.text = curFile.nativePath;
+					FileManager.setPackPath("SavePath",curFile.nativePath);
+				}
+				
+			}
+			
+		]]>
+	</fx:Script>
+</s:Group>

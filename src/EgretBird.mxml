@@ -1,0 +1,235 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:WindowedApplication xmlns:fx="http://ns.adobe.com/mxml/2009" 
+					   xmlns:s="library://ns.adobe.com/flex/spark" 
+					   xmlns:mx="library://ns.adobe.com/flex/mx"  width="912" height="565"  addedToStage="windowedapplication1_addedToStageHandler(event)" creationComplete="windowedapplication1_creationCompleteHandler(event)">
+	<fx:Declarations>
+		<!-- 将非可视元素（例如服务、值对象）放在此处 -->
+	</fx:Declarations>
+ 
+    <fx:Script>
+		<![CDATA[
+			import mx.controls.Alert;
+			import mx.events.DragEvent;
+			import mx.events.FileEvent;
+			import mx.events.FlexEvent;
+			import mx.managers.DragManager;
+			import mx.managers.PopUpManager;
+								
+			protected function windowedapplication1_creationCompleteHandler(event:FlexEvent):void
+			{
+				fileSystemTree.addEventListener(FileEvent.FILE_CHOOSE,onSelectFile);			 
+				this.addEventListener(NativeDragEvent.NATIVE_DRAG_ENTER,onDragEnter);  
+				this.addEventListener(NativeDragEvent.NATIVE_DRAG_DROP,onDragComplete);	
+			 
+				var mainMenu:NativeMenu = new NativeMenu();
+				mainMenu.addEventListener(Event.SELECT,onSelectMenu);
+				var parse:NativeMenuItem = new NativeMenuItem("粘贴");
+		 
+				 mainMenu.items = [parse];
+				 this.contextMenu=mainMenu;//将菜单加入到程序中
+	 
+				 initMenu();
+				 initCmd();
+			}  
+		           
+	 		//命令行
+			private function initCmd():void
+			{
+				NativeApplication.nativeApplication.addEventListener(InvokeEvent.INVOKE, onInvokeEvent);      
+				var arguments:Array;   
+				function onInvokeEvent(invocation:InvokeEvent):void   
+				{   
+					arguments = invocation.arguments;
+					if(arguments && arguments.toString() == "Definition")
+					{
+						var array:Array = Clipboard.generalClipboard.getData(ClipboardFormats.FILE_LIST_FORMAT) as Array;
+						if(array && array.length > 0)
+						{
+							var file:File = array[0];
+							var fileStream:FileStream = new FileStream();
+							fileStream.open(file,FileMode.READ);
+							var str:String = fileStream.readMultiByte(fileStream.bytesAvailable,"utf-8");
+							fileStream.close();  
+							if(str)
+							{
+								str = FileManager.changeCode(str);
+								Clipboard.generalClipboard.setData(ClipboardFormats.TEXT_FORMAT,str);								
+							}
+						
+							closeWin();
+						}
+					}
+					              
+				}  
+			}
+			
+			private function closeWin():void
+			{
+				this.width = 0;
+				this.height = 0;
+				this.close();
+			}
+			
+			private function initMenu():void
+			{
+				
+				if(NativeWindow.supportsMenu)
+				{  
+					var menuFile:NativeMenu = new NativeMenu();
+		 
+					var androidMenuItem:NativeMenuItem = new NativeMenuItem("Android 打包");
+					androidMenuItem.addEventListener(Event.SELECT,onOpenPackPanel);
+					menuFile.items = [androidMenuItem];
+					
+					var mainMenu:NativeMenu = new NativeMenu();
+					mainMenu.addSubmenu(menuFile,"文件");  
+					nativeWindow.menu = mainMenu;  
+				}	
+			}
+			
+			private function onOpenPackPanel(event:Event):void
+			{
+				var  panel:DevicePackPanel = new DevicePackPanel();
+				PopUpManager.addPopUp(panel,this);
+				PopUpManager.centerPopUp(panel);
+			}
+			
+			private function onSelectMenu(event:Event):void
+			{
+ 				var array:Array = Clipboard.generalClipboard.getData(ClipboardFormats.FILE_LIST_FORMAT) as Array;
+				if(array && array.length > 0)
+				{
+					var file:File = array[0];
+					var fileStream:FileStream = new FileStream();
+					fileStream.open(file,FileMode.READ);
+					var str:String = fileStream.readMultiByte(fileStream.bytesAvailable,"utf-8");
+					fileStream.close();  
+					if(str)
+					{
+						setText(str,file);
+					}
+				}
+			}
+             
+ 
+			private function onDragComplete(event:NativeDragEvent):void
+			{
+				var dropfiles:Array = event.clipboard.getData(ClipboardFormats.FILE_LIST_FORMAT) as Array;    					
+				var file:File = dropfiles[0];  
+				var fileStream:FileStream = new FileStream();  
+				fileStream.open(file, FileMode.READ);  
+				var str:String = fileStream.readMultiByte(fileStream.bytesAvailable, "utf-8");  
+				fileStream.close();  
+				if(str)
+				{
+					setText(str, file);		 
+				}
+			}
+			
+			private function onDragEnter(event:NativeDragEvent):void
+			{				 
+				 
+				if(event.clipboard.hasFormat(ClipboardFormats.FILE_LIST_FORMAT)   &&
+				   event.clipboard.getData(ClipboardFormats.FILE_LIST_FORMAT)[0].nativePath.split(".")[1] == "exml")
+				{  
+					NativeDragManager.acceptDragDrop(this);  
+				}
+			}
+						
+			private function  onSelectFile(event:FileEvent):void
+			{
+				if(event.file && event.file.isDirectory == false)
+				{
+					var fileStream:FileStream = new FileStream();
+					fileStream.open(event.file,FileMode.READ);
+					var str:String = fileStream.readMultiByte(fileStream.bytesAvailable,"utf-8");
+					fileStream.close();  
+					if(str)
+					{
+						setText(str,event.file);
+					}
+				}
+			}
+			
+			private function setText(str:String,file:File):void
+			{
+				codeTextArea.text = str;
+				changeCode(str);
+				
+				//file:///E:/egret/egrettt/AddressBook/src/skins/scene/MainViewSkin.exml
+				if(!file) return;
+				var url:String = file.url;
+				var startIndex:int = url.indexOf("src/")+4;
+				var endIndex:int = url.lastIndexOf(".");
+				var tempStr:String = url.substring(startIndex,endIndex);
+				var reg:RegExp =  new RegExp("/", "g");
+				
+				tempStr = tempStr.replace(reg,".");
+				resultTextArea.appendText("\n\n\n对应包路径 =============     \n  ");
+				resultTextArea.appendText(tempStr);
+			}
+		
+			private function changeCode(codeStr:String):void
+			{
+				
+				var codeStr:String = codeStr;
+				var array:Array = codeStr.split("\n");
+				var reg:RegExp = new RegExp(" id=\"(.*?)\"","ig");
+				var resultStr:String = "";//结果
+				for each (var str:String in array)
+				{
+					//搜索空格符
+					var space:String = str.substr(str.indexOf(":") + 1);
+					
+					//从：冒号开始搜索
+					var startIndex:int = str.indexOf(":") + 1;
+					var endIndex:int = startIndex + space.indexOf(" ");//以第一个空格符结束为标记
+					var typeStr:String = str.substring(startIndex,endIndex);//egret的类型
+					
+					var temp:Array = str.match(reg);
+					if (temp && temp[0])
+					{
+						var idStr:String = String(temp[0]).replace("id=",'').replace("\"",'').replace("\"",'');
+						resultStr +=  "private #1:egret.gui.#2;".replace("#1",idStr).replace("#2",typeStr) + "\n";
+					}
+				}
+				
+				resultTextArea.text = resultStr;
+			}
+			
+			protected function windowedapplication1_addedToStageHandler(event:Event):void
+			{
+				return;
+				var array:Array = Clipboard.generalClipboard.getData(ClipboardFormats.FILE_LIST_FORMAT) as Array;
+				if(array && array.length > 0)
+				{
+					var file:File = array[0];
+					var fileStream:FileStream = new FileStream();
+					fileStream.open(file,FileMode.READ);
+					var str:String = fileStream.readMultiByte(fileStream.bytesAvailable,"utf-8");
+					fileStream.close();  
+					if(str)
+					{
+						setText(str,file);
+					}
+				}
+			}
+			
+		]]>
+	</fx:Script>
+	
+	
+	<mx:DividedBox direction="horizontal" width="100%" height="100%">
+		
+		<mx:Panel title="目录" width="20%" height="100%" backgroundColor="0xCCCCCC">
+			<mx:FileSystemTree  id="fileSystemTree" x="19" y="30" width="100%" height="100%"/>
+		</mx:Panel>
+		
+		<mx:Panel title="代码" width="40%" height="100%" backgroundColor="0xCCCCCC">
+			<s:TextArea id="codeTextArea"  editable="false" x="283" y="30" width="100%" height="100%"/>
+		</mx:Panel>
+		<mx:Panel title="转换代码" width="40%" height="100%" backgroundColor="0xCCCCCC">
+			<s:TextArea  id="resultTextArea" fontSize="15" x="283" y="30" width="100%" height="100%"/>
+		</mx:Panel>
+	</mx:DividedBox>
+</s:WindowedApplication>
